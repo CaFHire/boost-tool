@@ -1,6 +1,6 @@
 @echo off
 color 04
-title 
+title CaFHire Booster
 cls
 py join.py
 pause

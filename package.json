@@ -1,0 +1,20 @@
+{
+  "name": "booster-joiner",
+  "version": "1.0.0",
+  "description": "Boost Satıcıları İçin İşi Çok Kolay Hale Getiren Bir Programdır",
+  "main": "boost.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "cafhire",
+  "license": "ISC",
+  "dependencies": {
+    "2captcha": "^3.0.5",
+    "chalk": "^4.1.2",
+    "discord.js-selfbot-v13": "^2.14.5",
+    "discord.js-selfbot-v13-proxy": "^2.14.3",
+    "gradient-string": "^2.0.2",
+    "https-proxy-agent": "5.0.1",
+    "proxy-agent": "^6.2.1"
+  }
+}

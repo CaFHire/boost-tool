@@ -4,84 +4,17 @@ import shutil
 import requests
 import hashlib
 
-# ========== Güncelleme Ayarları ==========
-
-GITHUB_USER = "CaFHire"
-REPO_NAME = "boost-tool"
-BRANCH = "main"
-RAW_BASE_URL = f"https://raw.githubusercontent.com/{GITHUB_USER}/{REPO_NAME}/{BRANCH}"
-
+# ===============================
+# 🔒 KORUNAN DOSYA VE KLASÖRLER
+# ===============================
 PROTECTED = [
     "node_modules", "programlar", "pyarmor_runtime_000000",
     "config.json", "package-lock.json", "proxies.txt", "tokens.txt"
 ]
 
-def hash_file(path):
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        while chunk := f.read(4096):
-            h.update(chunk)
-    return h.hexdigest()
-
-def hash_content(content):
-    return hashlib.sha256(content).hexdigest()
-
-def update_file(file_path):
-    print(f"\n[🔍] {file_path} kontrol ediliyor...")
-    try:
-        url = f"{RAW_BASE_URL}/{file_path}"
-        r = requests.get(url)
-        if r.status_code != 200:
-            print(f"[!] {file_path} uzaktan alınamadı: {r.status_code}")
-            return
-
-        remote = r.content
-        if not os.path.exists(file_path):
-            with open(file_path, "wb") as f:
-                f.write(remote)
-            print(f"[+] {file_path} indirildi.")
-            return
-
-        local_hash = hash_file(file_path)
-        remote_hash = hash_content(remote)
-
-        if local_hash != remote_hash:
-            with open(file_path, "wb") as f:
-                f.write(remote)
-            print(f"[✓] {file_path} güncellendi.")
-        else:
-            print(f"[=] {file_path} zaten güncel.")
-    except Exception as e:
-        print(f"[HATA] {file_path} güncelleme hatası: {e}")
-
-def remove_unwanted_files():
-    for item in os.listdir():
-        if item in PROTECTED:
-            continue
-        if item.endswith(".py") or os.path.isdir(item) or item.endswith(".json") or item.endswith(".txt"):
-            try:
-                response = requests.get(f"{RAW_BASE_URL}/{item}")
-                if response.status_code == 404:
-                    if os.path.isdir(item):
-                        shutil.rmtree(item)
-                    else:
-                        os.remove(item)
-                    print(f"[🧹] Eski dosya silindi: {item}")
-            except:
-                continue
-
-def check_for_updates():
-    print("╔══════════════════════════════════════════╗")
-    print("║      🔄 CAFO Tool Auto-Updater v3.0      ║")
-    print("╚══════════════════════════════════════════╝")
-    update_file("join.py")
-    remove_unwanted_files()
-    print("\n[✓] Güncelleme tamamlandı.\n")
-
-check_for_updates()
-
-# ========== Python ve NPM Modül Kurulumu ==========
-
+# ===============================
+# 📦 GEREKLİ MODÜLLER
+# ===============================
 REQUIRED_PYTHON_MODULES = [
     "requests", "colored", "pystyle", "datetime", "keyboard", "tls_client",
     "easygui", "colorama", "pynput", "websocket", "fake_useragent",
@@ -98,6 +31,9 @@ REQUIRED_NPM_MODULES = [
     "proxy-agent"
 ]
 
+# ===============================
+# 🔧 PYTHON MODÜLLERİ KURULUMU
+# ===============================
 def install_python_modules():
     for module in REQUIRED_PYTHON_MODULES:
         try:
@@ -106,6 +42,9 @@ def install_python_modules():
             print(f"📦 Python modülü yükleniyor ➜ {module}")
             os.system(f'pip install {module}')
 
+# ===============================
+# 🔧 NPM MODÜLLERİ KURULUMU
+# ===============================
 def install_npm_modules():
     if shutil.which("node") is None or shutil.which("npm") is None:
         print("❌ Node.js ve npm yüklü değil veya PATH'e tanımlı değil.")
@@ -126,10 +65,103 @@ def install_npm_modules():
         else:
             print(f"✅ NPM modülü zaten yüklü ➜ {module}")
 
+# ===============================
+# 🔁 HASH YARDIMCILARI
+# ===============================
+def hash_file(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(4096):
+            h.update(chunk)
+    return h.hexdigest()
+
+def hash_content(content):
+    return hashlib.sha256(content).hexdigest()
+
+# ===============================
+# 🌐 GITHUB GÜNCELLEME
+# ===============================
+GITHUB_USER = "CaFHire"
+REPO_NAME = "boost-tool"
+BRANCH = "main"
+RAW_BASE_URL = f"https://raw.githubusercontent.com/{GITHUB_USER}/{REPO_NAME}/{BRANCH}"
+API_BASE_URL = f"https://api.github.com/repos/{GITHUB_USER}/{REPO_NAME}/contents?ref={BRANCH}"
+
+def check_for_updates():
+    print("╔══════════════════════════════════════════╗")
+    print("║      🔄 CAFO Tool Auto-Updater v3.0      ║")
+    print("╚══════════════════════════════════════════╝")
+
+    try:
+        r = requests.get(API_BASE_URL)
+        if r.status_code != 200:
+            print(f"[!] GitHub API erişim hatası: {r.status_code}")
+            return
+
+        github_files = r.json()
+        github_filenames = []
+
+        for file in github_files:
+            if file["type"] != "file":
+                continue
+
+            filename = file["name"]
+            github_filenames.append(filename)
+
+            if filename in PROTECTED:
+                print(f"[🔒] Atlaniyor (korunan): {filename}")
+                continue
+
+            raw_url = file["download_url"]
+            r2 = requests.get(raw_url)
+            if r2.status_code != 200:
+                print(f"[!] {filename} indirilemedi: {r2.status_code}")
+                continue
+
+            remote_content = r2.content
+            remote_hash = hash_content(remote_content)
+
+            if not os.path.exists(filename):
+                with open(filename, "wb") as f:
+                    f.write(remote_content)
+                print(f"[+] {filename} indirildi.")
+            else:
+                local_hash = hash_file(filename)
+                if local_hash != remote_hash:
+                    with open(filename, "wb") as f:
+                        f.write(remote_content)
+                    print(f"[✓] {filename} güncellendi.")
+                else:
+                    print(f"[=] {filename} zaten güncel.")
+
+        # Fazlalıkları sil
+        for file in os.listdir():
+            if file in PROTECTED or file in github_filenames:
+                continue
+            try:
+                if os.path.isfile(file):
+                    os.remove(file)
+                    print(f"[🧹] Silindi: {file}")
+                elif os.path.isdir(file):
+                    shutil.rmtree(file)
+                    print(f"[🧹] Klasör silindi: {file}")
+            except Exception as e:
+                print(f"[!] Silinemedi: {file} ({e})")
+
+        print("\n[✓] Güncelleme tamamlandı.\n")
+
+    except Exception as e:
+        print(f"[!] Güncelleme kontrolü başarısız: {e}")
+
+# ===============================
+# 🧹 EKRANI TEMİZLE
+# ===============================
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
-# ========== Arayüz ==========
+# ===============================
+# 🎨 ARAYÜZ
+# ===============================
 def display_banner():
     from pystyle import Colorate, Colors
     print(Colorate.Horizontal(Colors.rainbow, """
@@ -158,10 +190,14 @@ def execute_command(command):
         from colorama import Fore
         print(Fore.RED + "❌ Lütfen geçerli bir seçenek girin!")
 
-# ========== Ana Program ==========
+# ===============================
+# 🚀 PROGRAM BAŞLANGICI
+# ===============================
 if __name__ == "__main__":
+    check_for_updates()
     install_python_modules()
     install_npm_modules()
+    
     while True:
         clear_screen()
         display_banner()
@@ -172,3 +208,4 @@ if __name__ == "__main__":
             print(Fore.CYAN + "👋 Çıkılıyor...")
             break
         execute_command(command)
+    
